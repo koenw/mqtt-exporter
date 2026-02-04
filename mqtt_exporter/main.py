@@ -38,9 +38,16 @@ class PromMetricId:
     labels: tuple = ()
 
 
+@dataclass(frozen=True)
+class PromMetricType:
+    name: str
+
+
 # global variables
 metric_refs: dict[str, list[tuple]] = defaultdict(list)
-prom_metrics: dict[PromMetricId, Gauge] = {}
+#prom_metrics: dict[PromMetricId, Gauge] = {}
+prom_metrics: dict[PromMetricId, PromMetricType] = {}
+prom_type_map: dict[str, PromMetricType] = {}
 prom_msg_counter = None
 
 
@@ -112,6 +119,7 @@ def _normalize_prometheus_metric_label_name(prom_metric_label_name):
 
 def _create_prometheus_metric(prom_metric_id, original_topic):
     """Create Prometheus metric if does not exist."""
+    LOG.info("original topic: %s", original_topic)
     if not prom_metrics.get(prom_metric_id):
         if settings.MAX_METRICS > 0 and len(prom_metrics) >= settings.MAX_METRICS:
             raise MaximumMetricReached(
@@ -123,9 +131,26 @@ def _create_prometheus_metric(prom_metric_id, original_topic):
             labels.append("client_id")
         labels.extend(prom_metric_id.labels)
 
-        prom_metrics[prom_metric_id] = Gauge(
-            prom_metric_id.name, "metric generated from MQTT message.", labels
-        )
+        prom_type = "Gauge"
+        LOG.info("Will match against %s", prom_type_map)
+        for pattern, _prom_type in prom_type_map.items():
+            LOG.info("Matching %s against %s", pattern, prom_metric_id.name)
+            if re.match(pattern, prom_metric_id.name):
+                prom_type = _prom_type
+                LOG.info("Matched %s", prom_type)
+                break
+
+        if prom_type == "Counter":
+            prom_metrics[prom_metric_id] = Counter(
+                prom_metric_id.name, "metric generated from MQTT message.", labels
+            )
+        elif prom_type == "Gauge":
+            prom_metrics[prom_metric_id] = Gauge(
+                prom_metric_id.name, "metric generated from MQTT message.", labels
+            )
+        else:
+            raise ValueError(f"Unsupported Prometheus metric type: {prom_type}")
+
         metric_refs[original_topic].append((prom_metric_id, labels))
 
         if settings.EXPOSE_LAST_SEEN:
@@ -135,7 +160,7 @@ def _create_prometheus_metric(prom_metric_id, original_topic):
             )
             metric_refs[original_topic].append((ts_metric_id, labels))
 
-        LOG.info("creating prometheus metric: %s", prom_metric_id)
+        LOG.info("creating prometheus %s: %s", prom_type, prom_metric_id)
 
 
 def _add_prometheus_sample(
@@ -234,6 +259,7 @@ def _parse_metrics(data, topic, original_topic, client_id, prefix="", labels=Non
         prom_metric_name = re.sub(r"\((.*?)\)", "", prom_metric_name)
         prom_metric_name = _normalize_prometheus_metric_name(prom_metric_name)
         prom_metric_id = PromMetricId(prom_metric_name, label_keys)
+
         try:
             _create_prometheus_metric(prom_metric_id, original_topic)
         except (ValueError, MaximumMetricReached) as error:
@@ -518,6 +544,15 @@ def expose_metrics(_, userdata, msg):
 
 def run():
     """Start the exporter."""
+    if settings.PROMETHEUS_TYPE_MAP:
+        global prom_type_map
+        LOG.info("Reading %s", settings.PROMETHEUS_TYPE_MAP)
+        with open(settings.PROMETHEUS_TYPE_MAP, 'r') as f:
+            prom_type_map = json.loads(f.read())
+            LOG.info("Read %s", prom_type_map)
+            for pattern, _prom_type in prom_type_map.items():
+                LOG.info("Got patterh %s and t %s", pattern, _prom_type)
+
     if settings.MQTT_V5_PROTOCOL:
         client = mqtt.Client(
             callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
@@ -557,6 +592,7 @@ def run():
 
         client.tls_set_context(ssl_context)
 
+
     def stop_request(signum, frame):
         """Stop handler for SIGTERM and SIGINT.
 
@@ -595,7 +631,9 @@ def main_mqtt_exporter():
         epilog="https://github.com/kpetremann/mqtt-exporter",
     )
     parser.add_argument("--test", action="store_true")
+    parser.add_argument("--metric-types", default = '')
     args = parser.parse_args()
+
 
     if args.test:
         topic = input("topic: ")

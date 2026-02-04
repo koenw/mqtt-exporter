@@ -48,6 +48,8 @@ PROMETHEUS_PORT = int(os.getenv("PROMETHEUS_PORT", "9000"))
 
 KEEP_FULL_TOPIC = os.getenv("KEEP_FULL_TOPIC", "False").lower() == "true"
 
+PROMETHEUS_TYPE_MAP = os.getenv("PROMETHEUS_TYPE_MAP")
+
 # State value mappings - can be extended via STATE_VALUES environment variable
 # Format: "KEY1=VALUE1,KEY2=VALUE2" (e.g., "OPEN=1,CLOSED=0,LOCKED=1,UNLOCKED=0")
 DEFAULT_STATE_VALUES = {
