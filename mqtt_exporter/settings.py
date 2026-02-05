@@ -7,6 +7,7 @@ LOG = logging.getLogger("mqtt-exporter")
 
 PREFIX = os.getenv("PROMETHEUS_PREFIX", "mqtt_")
 TOPIC_LABEL = os.getenv("TOPIC_LABEL", "topic")
+LABELS_FROM_TOPIC = os.getenv("LABELS_FROM_TOPIC", "device_model,device_id")
 TOPIC = os.getenv("MQTT_TOPIC", "#")
 IGNORED_TOPICS = os.getenv("MQTT_IGNORED_TOPICS", "").split(",")
 ZWAVE_TOPIC_PREFIX = os.getenv("ZWAVE_TOPIC_PREFIX", "zwave/")

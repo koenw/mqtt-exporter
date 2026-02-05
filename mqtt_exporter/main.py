@@ -110,6 +110,19 @@ def _normalize_prometheus_metric_label_name(prom_metric_label_name):
     return prom_metric_label_name
 
 
+def labels_from_topic(original_topic):
+    labels = {"device_model": "", "device_id": ""}
+
+    matches = re.match("[^/]+/[^/]+/devices/(?P<device_model>[^/]+)/(?P<device_id>[^/]+)/", original_topic)
+    if matches:
+        for label_name in settings.LABELS_FROM_TOPIC.split(','):
+            label_value = matches.group(label_name)
+            if label_value:
+                labels[label_name] = label_value
+
+    return labels
+
+
 def _create_prometheus_metric(prom_metric_id, original_topic):
     """Create Prometheus metric if does not exist."""
     if not prom_metrics.get(prom_metric_id):
@@ -122,6 +135,9 @@ def _create_prometheus_metric(prom_metric_id, original_topic):
         if settings.MQTT_EXPOSE_CLIENT_ID:
             labels.append("client_id")
         labels.extend(prom_metric_id.labels)
+
+        if settings.LABELS_FROM_TOPIC:
+            labels.extend(settings.LABELS_FROM_TOPIC.split(','))
 
         prom_metrics[prom_metric_id] = Gauge(
             prom_metric_id.name, "metric generated from MQTT message.", labels
@@ -234,6 +250,11 @@ def _parse_metrics(data, topic, original_topic, client_id, prefix="", labels=Non
         prom_metric_name = re.sub(r"\((.*?)\)", "", prom_metric_name)
         prom_metric_name = _normalize_prometheus_metric_name(prom_metric_name)
         prom_metric_id = PromMetricId(prom_metric_name, label_keys)
+
+        if settings.LABELS_FROM_TOPIC:
+            labels = labels | labels_from_topic(original_topic)
+
+
         try:
             _create_prometheus_metric(prom_metric_id, original_topic)
         except (ValueError, MaximumMetricReached) as error:
