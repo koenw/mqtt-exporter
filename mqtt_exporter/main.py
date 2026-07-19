@@ -254,7 +254,6 @@ def _parse_metrics(data, topic, original_topic, client_id, prefix="", labels=Non
         if settings.LABELS_FROM_TOPIC:
             labels = labels | labels_from_topic(original_topic)
 
-
         try:
             _create_prometheus_metric(prom_metric_id, original_topic)
         except (ValueError, MaximumMetricReached) as error:

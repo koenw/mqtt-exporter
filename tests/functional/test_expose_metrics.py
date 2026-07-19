@@ -51,13 +51,11 @@ def test_expose_metrics__default(mocker):
     assert len(temperatures) == 1
     assert len(temperatures[0].samples) == 1
     assert temperatures[0].samples[0].value == 23.5
-    #assert temperatures[0].samples[0].labels == {"topic": "zigbee2mqtt_garage"}
     assert temperatures[0].samples[0].labels["topic"] == "zigbee2mqtt_garage"
 
     assert len(humidity) == 1
     assert len(humidity[0].samples) == 1
     assert humidity[0].samples[0].value == 40.5
-    #assert humidity[0].samples[0].labels == {"topic": "zigbee2mqtt_garage"}
     assert humidity[0].samples[0].labels["topic"] == "zigbee2mqtt_garage"
 
 
@@ -69,20 +67,12 @@ def test_expose_metrics__default_client_set_exposed(mocker):
     assert len(temperatures) == 1
     assert len(temperatures[0].samples) == 1
     assert temperatures[0].samples[0].value == 23.5
-#    assert temperatures[0].samples[0].labels == {
-#        "client_id": "clienttestid",
-#        "topic": "zigbee2mqtt_garage",
-#    }
     assert temperatures[0].samples[0].labels["client_id"] == "clienttestid"
     assert temperatures[0].samples[0].labels["topic"] == "zigbee2mqtt_garage"
 
     assert len(humidity) == 1
     assert len(humidity[0].samples) == 1
     assert humidity[0].samples[0].value == 40.5
-#    assert humidity[0].samples[0].labels == {
-#        "client_id": "clienttestid",
-#        "topic": "zigbee2mqtt_garage",
-#    }
     assert humidity[0].samples[0].labels["client_id"] == "clienttestid"
     assert humidity[0].samples[0].labels["topic"] == "zigbee2mqtt_garage"
 
@@ -100,11 +90,9 @@ def test_expose_metrics__labels_from_user_properties(mocker):
     }
 
     assert len(temperatures) == 1
-    #assert temperatures[0].samples[0].labels == expected_labels
     for k, v in expected_labels.items():
         assert temperatures[0].samples[0].labels[k] == v
 
     assert len(humidity) == 1
-    #assert humidity[0].samples[0].labels == expected_labels
     for k, v in expected_labels.items():
         assert humidity[0].samples[0].labels[k] == v
